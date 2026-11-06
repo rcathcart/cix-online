@@ -1,11 +1,15 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>CIX Online</title>
-<meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap">
 <style>
-/* Layout: a game table. Header strip, lobby card, then opponent's row above yours, 6 slots each (3x2 on phones). */
+/* Layout: a game table. Header strip, lobby, setup, then the other player's day above yours, 6 slots each (3x2 on phones). */
 :root {
-  --table: #e7e9ee;        /* page ground, cool grey with a violet lean */
+  --table: #e7e9ee;        /* page ground */
   --table-2: #d9dce5;      /* inset wells */
   --card: #fbfaf6;         /* card stock */
   --ink: #1d1b26;
@@ -14,6 +18,9 @@
   --accent: #6a3fd1;       /* CIX purple: active shift, primary actions */
   --accent-ink: #ffffff;
   --accent-soft: #ece5fb;
+  --weather: #2f6f9e;      /* weather cards */
+  --bb: #0b0a0f;           /* black-border shifts */
+  --bb-ink: #ffffff;
   --ok: #1f7a4d;
   --warn: #9a6a00;
   --bad: #b3261e;
@@ -24,20 +31,24 @@
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
   --table: #17161d; --table-2: #201f29; --card: #2a2834; --ink: #f1eff7; --ink-2: #a9a5b8;
-  --line: #3b3948; --accent: #a58bf5; --accent-ink: #17161d; --accent-soft: #352c52;
+  --line: #3b3948; --accent: #a58bf5; --accent-ink: #17161d; --accent-soft: #352c52; --weather: #7cb8e4;
+  --bb: #000000; --bb-ink: #ffffff;
   --ok: #5fcf95; --warn: #e2b54a; --bad: #f08a80; color-scheme: dark } }
 :root[data-theme="dark"] {
   --table: #17161d; --table-2: #201f29; --card: #2a2834; --ink: #f1eff7; --ink-2: #a9a5b8;
-  --line: #3b3948; --accent: #a58bf5; --accent-ink: #17161d; --accent-soft: #352c52;
+  --line: #3b3948; --accent: #a58bf5; --accent-ink: #17161d; --accent-soft: #352c52; --weather: #7cb8e4;
+  --bb: #000000; --bb-ink: #ffffff;
   --ok: #5fcf95; --warn: #e2b54a; --bad: #f08a80; color-scheme: dark }
 
-body { background: var(--table); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.45; }
-.wrap { max-width: 1080px; margin: 0 auto; padding-block: 20px 48px;
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--table); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.45; }
+.wrap { max-width: 1180px; margin: 0 auto; padding-block: 20px 48px;
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
   display: grid; gap: 22px; }
 
 header { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; justify-content: space-between; }
-.brand { display: flex; align-items: baseline; gap: 10px; }
+.brand { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
 .brand h1 { font-family: var(--f-display); font-weight: 800; font-size: 28px; letter-spacing: -0.02em; margin: 0; }
 .brand span { font-family: var(--f-mono); font-size: 12px; color: var(--ink-2); letter-spacing: 0.08em; text-transform: uppercase; }
 .status { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-2);
@@ -47,65 +58,79 @@ header { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; ju
 .status[data-s="wait"] .dot { background: var(--warn); }
 .status[data-s="err"] .dot { background: var(--bad); }
 
-.lobby { display: flex; flex-wrap: wrap; gap: 16px 28px; align-items: center; background: var(--card);
-  border: 1px solid var(--line); border-radius: var(--r); padding: 16px 18px; }
-.lobby p { margin: 0; color: var(--ink-2); max-width: 46ch; }
-.lobby .group { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.panel { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 16px 18px; }
+.lobby { display: flex; flex-wrap: wrap; gap: 16px 28px; align-items: center; }
+.lobby p { margin: 0; color: var(--ink-2); max-width: 52ch; }
+.group { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 .code { font-family: var(--f-mono); font-weight: 600; font-size: 22px; letter-spacing: 0.08em; }
-input[type=text] { font-family: var(--f-mono); font-size: 16px; letter-spacing: 0.08em; text-transform: uppercase;
-  width: 9.5em; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--table); color: var(--ink); }
+input[type=text], select { font-family: var(--f-body); font-size: 15px; padding: 7px 10px; border-radius: 8px;
+  border: 1px solid var(--line); background: var(--table); color: var(--ink); }
+input[type=text] { font-family: var(--f-mono); font-size: 16px; letter-spacing: 0.08em; text-transform: uppercase; width: 9.5em; }
 button { font: 600 14px var(--f-body); border-radius: 8px; border: 1px solid var(--line); background: var(--card);
   color: var(--ink); padding: 8px 14px; cursor: pointer; }
 button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 button:hover { filter: brightness(1.05); }
-button:focus-visible, input:focus-visible, .slot:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 button:disabled { opacity: .5; cursor: default; }
 .msg { font-size: 13px; color: var(--bad); }
+.hint { font-size: 13px; color: var(--ink-2); }
+
+.setup { display: grid; gap: 12px; }
+.setup h2, .side-head h2 { font-family: var(--f-display); font-weight: 600; font-size: 19px; margin: 0; }
+.controls { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: end; }
+.controls label { display: grid; gap: 4px; font-size: 12px; font-weight: 600; color: var(--ink-2); }
+.zooinfo { font-size: 13px; color: var(--ink-2); margin: 0; max-width: 90ch; }
+.zooinfo i { color: var(--ink); }
+.today { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: baseline; border-top: 1px solid var(--line); padding-top: 12px; }
+.today b { font-family: var(--f-display); font-weight: 600; font-size: 17px; }
+.absent { font-size: 13px; color: var(--ink-2); }
 
 section.side { display: grid; gap: 10px; }
 .side-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
-.side-head h2 { font-family: var(--f-display); font-weight: 600; font-size: 19px; margin: 0; }
 .side-head .tag { font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-2); }
-.hint { font-size: 13px; color: var(--ink-2); }
 
 .row { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; background: var(--table-2);
   border-radius: var(--r); padding: 10px; }
-@media (max-width: 720px) { .row { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-.slot { display: grid; grid-template-rows: auto 1fr; gap: 6px; min-height: 230px; border-radius: 8px; }
-.slot-n { font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-2); padding-left: 2px; }
-.slot.over .cardx, .slot.over .empty { outline: 2px dashed var(--accent); outline-offset: 2px; }
+@media (max-width: 760px) { .row { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 460px) { .row { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.slot { display: grid; grid-template-rows: auto 1fr; gap: 6px; min-width: 0; }
+.slot-n { font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); padding-left: 2px; }
+.slot-n em { font-style: normal; opacity: .75; }
 
-.cardx { background: var(--card); border: 2px solid var(--ink); border-radius: 8px; padding: 8px 8px 6px;
-  display: grid; grid-template-rows: auto 1fr auto; gap: 6px; min-width: 0; cursor: grab; position: relative; }
-.mine .cardx.sel { box-shadow: 0 0 0 3px var(--accent); }
-.theirs .cardx { cursor: default; }
+.cardx { background: var(--card); border: 2px solid var(--ink); border-radius: 8px; padding: 8px 7px 7px;
+  display: flex; flex-direction: column; gap: 6px; min-width: 0; height: 100%; }
+.cardx.weather { border-color: var(--weather); }
+.ctop { display: grid; gap: 1px; }
 .cname { font-family: var(--f-display); font-weight: 600; font-size: 14px; line-height: 1.15; overflow-wrap: anywhere; }
+.cid { font-family: var(--f-mono); font-size: 10px; color: var(--ink-2); letter-spacing: 0.06em; }
+.weather .cid { color: var(--weather); }
 .shifts { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
-.shifts li { display: grid; grid-template-columns: 1.4em minmax(0, 1fr); gap: 4px; font-size: 12px; color: var(--ink-2);
-  padding: 2px 4px; border-radius: 4px; }
+.shifts li { display: grid; grid-template-columns: 1.1em auto minmax(0, 1fr); gap: 4px; align-items: baseline; font-size: 12px;
+  color: var(--ink-2); padding: 2px 4px; border-radius: 4px; }
 .shifts li b { font-family: var(--f-mono); font-weight: 600; }
-.shifts li.on { background: var(--accent); color: var(--accent-ink); }
-.shifts li span { overflow-wrap: anywhere; }
-.remove { justify-self: end; font-size: 12px; padding: 3px 8px; font-weight: 500; }
+.shifts li .ic { white-space: nowrap; }
+.shifts li .an { overflow-wrap: anywhere; }
+.shifts li.bb { background: var(--bb); color: var(--bb-ink); }
+.shifts li.on { background: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.shifts li.on.bb { background: var(--bb); color: var(--bb-ink); box-shadow: inset 0 0 0 2px var(--accent); }
+.active { font-size: 12px; border-left: 3px solid var(--accent); padding: 2px 0 2px 7px; overflow-wrap: anywhere; }
+.active.bb { border-left-color: var(--bb); }
+.active small { display: block; font-family: var(--f-mono); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-2); }
+.presence { margin-top: auto; font-size: 12px; border-top: 1px dashed var(--line); padding-top: 5px; overflow-wrap: anywhere; }
+.presence small { display: block; font-family: var(--f-mono); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-2); }
 
-.empty { border: 1.5px dashed var(--line); border-radius: 8px; display: grid; place-items: center; align-content: center; gap: 8px;
-  color: var(--ink-2); font-size: 12px; text-align: center; padding: 8px; }
-.theirs .empty { border-style: dotted; }
 .waiting { grid-column: 1 / -1; display: grid; place-items: center; min-height: 120px; color: var(--ink-2); text-align: center; padding: 16px; }
-
-@media (prefers-reduced-motion: no-preference) { .cardx { transition: box-shadow .12s ease; } }
 </style>
-
+</head>
+<body>
 <div class="wrap">
   <header>
-    <div class="brand"><h1>CIX Online</h1><span>Milestone 1 · Two Rows</span></div>
+    <div class="brand"><h1>CIX Online</h1><span>CIX Zoo · build step 1 of 4: real cards</span></div>
     <div class="status" id="status" data-s="off" role="status"><span class="dot"></span><span id="statusText">Not connected</span></div>
   </header>
 
-  <div class="lobby" id="lobby">
-    <div class="group" id="hostGroup">
-      <button class="primary" id="hostBtn">Host a game</button>
-    </div>
+  <div class="panel lobby" id="lobby">
+    <div class="group" id="hostGroup"><button class="primary" id="hostBtn">Host a game</button></div>
     <div class="group" id="joinGroup">
       <label for="codeInput" class="hint">Have a code?</label>
       <input type="text" id="codeInput" placeholder="CIX-0000" maxlength="8" autocomplete="off" spellcheck="false">
@@ -117,154 +142,384 @@ section.side { display: grid; gap: 10px; }
       <button id="copyBtn">Copy code</button>
       <button id="leaveBtn">Leave</button>
     </div>
-    <p id="lobbyHelp">Host a game to get a code, then send the code to the other player. They type it here and you're connected.</p>
+    <p id="lobbyHelp">Host a game to get a code, then send the code to the other player. They type it here and you're connected. Each of you plays your own zoo day; you can watch each other's.</p>
     <span class="msg" id="msg" role="alert"></span>
   </div>
 
-  <section class="side theirs" aria-label="Opponent's row">
-    <div class="side-head"><h2>Opponent's row</h2><span class="tag">View only</span></div>
+  <section class="panel setup" aria-label="The day">
+    <h2>The day</h2>
+    <div class="controls" id="controls">
+      <label>Zoo <select id="zooSel"></select></label>
+      <label>Season <select id="seasonSel"></select></label>
+      <label>Play mode <select id="modeSel"></select></label>
+      <button class="primary" id="dealBtn">Shuffle and deal</button>
+    </div>
+    <p class="zooinfo" id="zooInfo"></p>
+    <p class="hint" id="setupNote"></p>
+    <div class="today" id="today" hidden></div>
+  </section>
+
+  <section class="side" aria-label="Other player's day">
+    <div class="side-head"><h2>Other player's day</h2><span class="tag">Watching</span></div>
     <div class="row" id="theirRow"></div>
   </section>
 
-  <section class="side mine" aria-label="Your row">
-    <div class="side-head"><h2>Your row</h2><span class="tag">Yours to change</span>
-      <span class="hint">Drag a card onto another slot to swap them, or tap one card and then another. A card in slot N activates its shift N.</span></div>
+  <section class="side" aria-label="Your day">
+    <div class="side-head"><h2>Your day</h2><span class="tag">Your row</span>
+      <span class="hint">A card in slot N activates its shift N. Slots 1–3 are the morning, 4–6 the afternoon.</span></div>
     <div class="row" id="myRow"></div>
   </section>
 </div>
 
 <script>
 (() => {
-  // ---------- Placeholder deck (same on both players' pages) ----------
-  const POOL = ["Gain 1","Gain 2","Draw 1","Block 1","Block 2","Move 1","Swap","Score 1","Score 2","Peek","Ready","Exhaust","Shield","Push"];
-  function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;}}
-  const rnd = mulberry32(20261106);
-  const DECK = Array.from({length: 24}, (_, i) => ({
-    id: i,
-    name: "Test Card " + String(i + 1).padStart(2, "0"),
-    shifts: Array.from({length: 6}, () => POOL[Math.floor(rnd() * POOL.length)])
-  }));
+  // =====================================================================
+  // CIX Zoo card data. Copied from the Notion "Zoo Exhibit Cards" database
+  // (ZOO-001 to ZOO-016) on 2026-11-06. If a card changes in Notion, this
+  // copy must be updated to match.
+  // Exhibit shift format: "icons|Animal|what you see". A black-border shift
+  // starts with ⬛ and has no animal. Weather shift: "emoji|Name|effect".
+  // =====================================================================
+  const ICONS = ["😂", "🔬", "😱", "❤️", "❓", "⏳"];
+  const iconSplit = s => s.match(/❤️|😂|🔬|😱|❓|⏳/gu) || [];
+
+  function exhibit(id, name, presence, shifts) {
+    return { id, name, kind: "exhibit", presence, shifts: shifts.map(s => {
+      const [ic, animal, text] = s.split("|");
+      return ic === "⬛" ? { bb: true, text } : { icons: iconSplit(ic), animal, text };
+    }) };
+  }
+  function weather(id, name, emoji, season, presence, shifts) {
+    return { id, name, kind: "weather", emoji, season, presence, shifts: shifts.map(s => {
+      const [ic, label, text] = s.split("|");
+      return { bb: ic === "⬛", emoji: ic, label, text };
+    }) };
+  }
+
+  const CARDS = [
+    exhibit("ZOO-001", "African Safari",
+      { animal: "Giraffe", note: "peeking over the fence", kind: "morning", bonus: ["❤️"], why: "you fed the giraffe" }, [
+      "🔬⏳|Elephant|spraying dust over its back.",
+      "😂❤️|Meerkat|standing guard on a mound.",
+      "❤️😱|Lion|napping on a sunny rock.",
+      "⬛||Viewing deck closed for repairs.",
+      "❓|Zebra|swishing its tail at flies.",
+      "❓|Hippo|just its eyes and ears above the water."]),
+    exhibit("ZOO-002", "Rainforest",
+      { animal: "Scarlet Macaw", note: "squawking from the entrance perch", kind: "flat", bonus: ["😂"], why: "it squawked “hello.”" }, [
+      "⬛||Glasses fogged up — the mist hid everything.",
+      "❤️⏳|Sloth|hanging upside down, barely moving.",
+      "😂|Howler Monkey|hollering from the treetops.",
+      "🔬😱|Poison Dart Frog|a bright blue speck on a leaf.",
+      "😂❤️|Capybara|soaking in the shallow pool.",
+      "😱⏳|Jaguar|pacing behind the glass."]),
+    exhibit("ZOO-003", "Aquarium",
+      { animal: "Clownfish", note: "darting through the anemone", kind: "double", bonus: [], why: "" }, [
+      "🔬⏳|Octopus|squeezing into a tiny cave.",
+      "❓|Jellyfish|pulsing under purple lights.",
+      "❤️⏳|Sea Turtle|paddling slowly overhead.",
+      "❤️|Seahorse|holding onto seagrass with its tail.",
+      "😱|Shark|circling the big tank.",
+      "⬛||Couldn't squeeze to the front of the big tank."]),
+    exhibit("ZOO-004", "Polar Zone",
+      { animal: "Penguins", note: "waddling in a line", kind: "afternoon", bonus: ["😂"], why: "penguin parade" }, [
+      "❓|Snowy Owl|staring without blinking.",
+      "⬛||Just missed feeding time.",
+      "😂|Puffin|diving for fish.",
+      "⏳|Polar Bear|swimming laps past the window.",
+      "🔬|Walrus|showing off its tusks.",
+      "❤️|Arctic Fox|curled into a white ball."]),
+    exhibit("ZOO-005", "Australian Outback",
+      { animal: "Kangaroo", note: "lounging under the gum trees", kind: "flat", bonus: ["❓"], why: "a joey in that pouch?" }, [
+      "😱😂|Tasmanian Devil|growling at its keeper.",
+      "😂❓|Kookaburra|laughing from a fence post.",
+      "🔬❓|Platypus|paddling in the night-house stream.",
+      "❤️|Koala|asleep in the fork of a tree.",
+      "⬛||Night-house was dark and empty.",
+      "😂|Emu|strolling right up to the path."]),
+    exhibit("ZOO-006", "Reptile House",
+      { animal: "Giant Tortoise", note: "munching lettuce", kind: "morning", bonus: ["⏳"], why: "breakfast takes forever" }, [
+      "😱⏳|Alligator|floating like a log.",
+      "🔬|Gecko|stuck to the glass upside down.",
+      "⬛||“Enclosure under renovation.”",
+      "😱🔬|Komodo Dragon|flicking its forked tongue.",
+      "⏳❓|Chameleon|slowly changing color.",
+      "😱|King Cobra|raising its hood."]),
+    weather("ZOO-007", "Spring Weather", "🌦️", "Spring", null, [
+      "⛈️|Thunderstorm|everyone runs indoors: swap the next two cards.",
+      "🌫️|Fog|can't see the next exhibit's always-seen animal: no bonus.",
+      "⬛|Storm closes the next exhibit|no shift, no always-seen bonus.",
+      "🥵|Hot Day|a sluggish crowd: the next exhibit gives no 😂.",
+      "🌧️|Moderate Rain|lose your Parent token if you still have it.",
+      "🌈|Rainbow|+❤️; if you spent your Parent token, get it back."]),
+    exhibit("ZOO-008", "Primate Forest",
+      { animal: "Gorilla", note: "watching you through the glass", kind: "afternoon", bonus: ["😂"], why: "it copied you" }, [
+      "😂❓|Ring-tailed Lemurs|sunbathing with arms spread wide.",
+      "🔬⏳|Chimpanzee|fishing for termites with a stick.",
+      "😂|Spider Monkey|swinging by its tail.",
+      "😱|Mandrill|flashing its huge teeth.",
+      "⬛||Everyone stayed hidden in the indoor den.",
+      "😂❤️|Orangutan|wearing a burlap sack like a hat."]),
+    exhibit("ZOO-009", "Asian Highlands",
+      { animal: "Red Panda", note: "curled on a branch", kind: "morning", bonus: ["❤️"], why: "it's awake!" }, [
+      "⬛||Mountain trail closed for bridge repairs.",
+      "❤️⏳|Giant Panda|munching bamboo, one stalk at a time.",
+      "❓|Takin|what kind of animal is that?",
+      "❤️⏳|Snow Leopard|wrapped in its own fluffy tail.",
+      "❓|Pallas's Cat|why does it look so grumpy?",
+      "😱|Tiger|swimming across the moat."]),
+    exhibit("ZOO-010", "Bird Aviary",
+      { animal: "Flamingos", note: "standing on one leg by the pond", kind: "flat", bonus: ["😂"], why: "try it yourself!" }, [
+      "❓|Pelican|how much fits in that pouch?",
+      "⏳|Hummingbird|hovering at a flower.",
+      "⬛||A bird stole your snack, so you left.",
+      "❤️|Peacock|fanning out its tail.",
+      "😂❓|Hornbill|wearing a helmet on its beak.",
+      "😱🔬|Vulture|tearing into lunch."]),
+    exhibit("ZOO-011", "Children's Farm",
+      { animal: "Goats", note: "climbing on everything, including each other", kind: "flat", bonus: ["❤️"], why: "one nibbled your sleeve" }, [
+      "❤️|Bunnies|nibbling carrots in your lap.",
+      "😂|Llama|spitting at the fence (it missed you!).",
+      "🔬|Cow|the keeper shows you how milking works.",
+      "🔬⏳|Chicks|hatching in the incubator.",
+      "❤️😂|Piglets|piled in a snoring heap.",
+      "⬛||Petting barn closed for cleaning."]),
+    exhibit("ZOO-012", "Bug House",
+      { animal: "Leafcutter Ants", note: "marching leaves over a bridge", kind: "double", bonus: [], why: "" }, [
+      "🔬|Scorpion|glowing under black light.",
+      "⬛||Too crowded to see into any tanks.",
+      "😱😂|Hissing Cockroach|it hissed at you!",
+      "❤️⏳|Butterflies|one landed on your shoulder.",
+      "😱🔬|Tarantula|molting out of its old skin.",
+      "❓|Stick Insect|is that a twig, or not?"]),
+    exhibit("ZOO-013", "North American Trail",
+      { animal: "Bald Eagle", note: "perched above the trail", kind: "afternoon", bonus: ["⏳"], why: "waiting for liftoff" }, [
+      "❓|Bison|huge, shaggy, and very still.",
+      "😂❤️|River Otters|sliding down the mud bank.",
+      "😱⏳|Grizzly Bear|catching fish in the stream.",
+      "⬛||Fell asleep in the stroller.",
+      "🔬❓|Beaver|patching its dam with sticks.",
+      "😱|Gray Wolf|howling from the ridge."]),
+    weather("ZOO-014", "Summer Weather", "☀️", "Summer", null, [
+      "🌅|Cool Morning|the next exhibit's shift icons count double.",
+      "💦|Splash Pad|soaked and giggling: +😂😂.",
+      "⬛|Too hot|the next two exhibits give only their always-seen bonus.",
+      "🌬️|Cool Breeze|everyone lingers: +⏳ at the next exhibit.",
+      "🧴|Sunscreen Stop|no more Parent token swaps today.",
+      "🌇|Long Summer Evening|stay until closing: +⏳❤️."]),
+    weather("ZOO-015", "Winter Weather", "❄️", "Winter",
+      "Snow day: when this card is revealed, take a second Parent token.", [
+      "🧊|Frozen Pond|a skating show: the next exhibit gives double icons.",
+      "🐧|Penguin Weather|at day's end, double the Polar Zone's icons.",
+      "🌨️|Snowball Fight|+😂, and the exhibit before gives +❤️.",
+      "🔥|Warming Hut|the exhibits on both sides give +❤️.",
+      "⬛|Snowed-In Path|the next exhibit is closed.",
+      "⛄|Snowman|+😂, and the exhibit before gives double icons."]),
+    weather("ZOO-016", "Fall Weather", "🍂", "Fall", null, [
+      "🍁|Crisp Morning|the next two exhibits each give +⏳.",
+      "🕰️|Clocks Fall Back|morning and afternoon bonuses swap today.",
+      "🎃|Pumpkin Patch|a spooky detour: +😱😂.",
+      "⬛|Leaf Storm|the next exhibit's animals hide: always-seen bonus only.",
+      "🦆|Migration|geese overhead: +❓, and the next exhibit gives +🔬.",
+      "🍎|Apple Cider|+❤️; an unused Parent token counts as two wild icons."]),
+  ];
+  const CARD = Object.fromEntries(CARDS.map(c => [c.id, c]));
+  const SEASON_CARD = { Spring: "ZOO-007", Summer: "ZOO-014", Fall: "ZOO-016", Winter: "ZOO-015" };
+
+  // Zoo Scenarios page, copied 2026-11-06.
+  const ex = n => "ZOO-" + String(n).padStart(3, "0");
+  const ZOOS = [
+    { key: "hometown", name: "🏡 Hometown Zoo", size: "Small: 6 exhibits", cards: [1,2,3,4,5,6].map(ex),
+      blurb: "The neighborhood zoo you've visited since you were little. Six exhibits, and on a good day you can see them all.",
+      bb: "One black border in every slot.", lean: "Balanced; no career is favored." },
+    { key: "riverside", name: "🌳 Riverside Family Zoo", size: "Small: 6 exhibits", cards: [8,9,10,11,12,13].map(ex),
+      blurb: "A newer zoo by the river, built for families: farm animals, a bug house, and a long woodland trail.",
+      bb: "One black border in every slot.", lean: "😂 Cartoonist and ❤️ Vet." },
+    { key: "rainy", name: "🌧️ Rainy-Day Discovery Center", size: "Small: 6 exhibits", cards: [3,2,6,12,10,4].map(ex),
+      blurb: "An indoor wildlife center for days when the weather won't cooperate. Tanks, glass, and nets, with no long walks outside.",
+      bb: "Black borders bunch up in slots 2 and 3; slots 4 and 5 are safe.", lean: "⏳ Wildlife Photographer and 😱 Wildlife Ranger." },
+    { key: "wildlands", name: "🦁 Wild Lands Safari Park", size: "Medium: 7 exhibits", cards: [1,9,5,13,8,10,6].map(ex),
+      blurb: "A sprawling park of open ranges where the animals have room to roam. Big, wild, and a little scary.",
+      bb: "Black borders double up in slots 3, 4 and 5; slots 2 and 6 are safe.", lean: "❓ Explorer and 😂 Cartoonist." },
+    { key: "metro", name: "🏙️ Metro Zoo", size: "Large: 9 exhibits", cards: [1,2,3,4,8,9,10,11,13].map(ex),
+      blurb: "The big city zoo, with something on every path. You won't see it all in one day, so the day you get is the day you get.",
+      bb: "Slots 1, 4 and 6 each carry two black borders.", lean: "❤️ Vet and 😂 Cartoonist." },
+    { key: "grand", name: "🏛️ Grand National Zoo", size: "Huge: 12 exhibits", cards: [1,2,3,4,5,6,8,9,10,11,12,13].map(ex),
+      blurb: "The famous one, with every exhibit there is. Families plan for weeks and still leave half of it for next time.",
+      bb: "Every slot carries two black borders.", lean: "Nearly balanced, slight tilt to 😂 Cartoonist and ❤️ Vet." },
+  ];
+  const ZOO = Object.fromEntries(ZOOS.map(z => [z.key, z]));
+
+  const MODES = [
+    { key: "open", name: "Open Day", note: "All cards face up." },
+    { key: "surprise", name: "Surprise Day", note: "All face down, revealed left to right." },
+    { key: "forecast", name: "Forecast Day", note: "Face down, but the weather (if dealt) is revealed first." },
+    { key: "half", name: "Half-Planned Day", note: "Morning face up, afternoon face down." },
+    { key: "peek", name: "Peek Day", note: "All face down; the Parent token can swap or peek." },
+  ];
+  const MODE = Object.fromEntries(MODES.map(m => [m.key, m]));
 
   // ---------- State ----------
-  let mine = [0, 1, 2, null, 3, 4];   // card ids or null, slots 1-6
-  let theirs = null;                    // null = no opponent yet
-  let selected = null;                  // slot index picked for tap-to-swap
-  let transport = null;                 // { send(row), leave() }
+  // day: the shared deal, chosen by the host. { zoo, season, seasonDrawn, mode, row:[6 card ids], out:[card ids] }
+  let day = null;
+  let mine = null;        // my row (card ids, slots 1–6); later steps change it with the Parent token
+  let theirs = null;      // the other player's row, as they last sent it
+  let role = null;        // null (on your own), "host" or "guest"
+  let connected = false;
+  let transport = null;
   let code = null;
 
   const $ = id => document.getElementById(id);
+  const setStatus = (s, text) => { $("status").dataset.s = s; $("statusText").textContent = text; };
+  const setMsg = t => { $("msg").textContent = t || ""; };
 
-  function validRow(r) {
-    return Array.isArray(r) && r.length === 6 &&
-      r.every(v => v === null || (Number.isInteger(v) && v >= 0 && v < DECK.length));
+  function validRow(r) { return Array.isArray(r) && r.length === 6 && r.every(id => typeof id === "string" && CARD[id]); }
+  function validDay(d) {
+    return d && ZOO[d.zoo] && SEASON_CARD[d.season] && MODE[d.mode] && validRow(d.row) &&
+      Array.isArray(d.out) && d.out.every(id => CARD[id]);
   }
 
-  function setStatus(s, text) { $("status").dataset.s = s; $("statusText").textContent = text; }
-  function setMsg(t) { $("msg").textContent = t || ""; }
+  // ---------- Setup ----------
+  function fillSelect(sel, items) {
+    sel.replaceChildren(...items.map(([v, t]) => Object.assign(document.createElement("option"), { value: v, textContent: t })));
+  }
+  fillSelect($("zooSel"), ZOOS.map(z => [z.key, z.name]));
+  fillSelect($("seasonSel"), [["random", "Draw at random"], ...Object.keys(SEASON_CARD).map(s => [s, CARD[SEASON_CARD[s]].emoji + " " + s])]);
+  fillSelect($("modeSel"), MODES.map(m => [m.key, m.name]));
+
+  function showZooInfo() {
+    const z = ZOO[$("zooSel").value];
+    $("zooInfo").innerHTML = "";
+    const i = document.createElement("i"); i.textContent = z.blurb;
+    $("zooInfo").append(i, document.createTextNode(" " + z.size + " + 1 weather card, " +
+      (z.cards.length + 1 - 6) + " left out each day. Black borders: " + z.bb + " Career lean: " + z.lean));
+  }
+  $("zooSel").addEventListener("change", showZooInfo);
+  showZooInfo();
+
+  function randInt(n) { const a = new Uint32Array(1); crypto.getRandomValues(a); return a[0] % n; }
+  function shuffle(arr) { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = randInt(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+
+  function deal() {
+    const zoo = $("zooSel").value;
+    let season = $("seasonSel").value, seasonDrawn = false;
+    if (season === "random") { season = shuffle(Object.keys(SEASON_CARD))[0]; seasonDrawn = true; }
+    const deck = shuffle([...ZOO[zoo].cards, SEASON_CARD[season]]);
+    day = { zoo, season, seasonDrawn, mode: $("modeSel").value, row: deck.slice(0, 6), out: deck.slice(6) };
+    mine = day.row.slice();
+    if (!connected) theirs = null;
+    send({ t: "day", day });
+    send({ t: "row", row: mine });
+    render();
+  }
+  $("dealBtn").addEventListener("click", deal);
 
   // ---------- Rendering ----------
-  function cardEl(card, slotIdx, editable) {
-    const el = document.createElement("div");
-    el.className = "cardx" + (editable && selected === slotIdx ? " sel" : "");
-    const name = document.createElement("div"); name.className = "cname"; name.textContent = card.name;
-    const ul = document.createElement("ul"); ul.className = "shifts";
-    card.shifts.forEach((s, k) => {
-      const li = document.createElement("li");
-      if (k === slotIdx) { li.className = "on"; li.setAttribute("aria-label", "Active shift " + (k + 1) + ": " + s); }
-      const b = document.createElement("b"); b.textContent = k + 1;
-      const sp = document.createElement("span"); sp.textContent = s;
-      li.append(b, sp); ul.append(li);
-    });
-    el.append(name, ul);
-    if (editable) {
-      el.draggable = true;
-      el.addEventListener("dragstart", e => { e.dataTransfer.setData("text/plain", String(slotIdx)); e.dataTransfer.effectAllowed = "move"; });
-      const rm = document.createElement("button"); rm.className = "remove"; rm.textContent = "Remove";
-      rm.addEventListener("click", e => { e.stopPropagation(); mine[slotIdx] = null; selected = null; changed(); });
-      el.append(rm);
-    } else {
-      el.append(document.createElement("span"));
-    }
-    return el;
+  function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+
+  function presenceText(p) {
+    if (p.kind === "double") return { line: p.animal + ": doubles this card's shift icons.", sub: "Always seen · double" };
+    const when = p.kind === "morning" ? "in the morning (slots 1–3)" : p.kind === "afternoon" ? "in the afternoon (slots 4–6)" : "any slot";
+    return { line: p.animal + ": +" + p.bonus.join("") + " " + when + ".", sub: "Always seen · " + p.kind };
   }
 
-  function renderRow(container, row, editable) {
-    container.replaceChildren();
-    if (!row) {
-      const w = document.createElement("div"); w.className = "waiting";
-      w.textContent = code ? "Waiting for the other player to join with code " + code + "…" : "No opponent yet. Host or join a game to see their row here.";
-      container.append(w); return;
+  function cardEl(card, slotIdx) {
+    const c = el("div", "cardx" + (card.kind === "weather" ? " weather" : ""));
+    const top = el("div", "ctop");
+    top.append(el("div", "cname", (card.kind === "weather" ? card.emoji + " " : "") + card.name), el("div", "cid", card.id + (card.kind === "weather" ? " · weather" : "")));
+    c.append(top);
+
+    const ul = el("ul", "shifts");
+    card.shifts.forEach((s, k) => {
+      const li = el("li", (s.bb ? "bb" : "") + (k === slotIdx ? " on" : ""));
+      li.append(el("b", null, String(k + 1)));
+      if (card.kind === "weather") { li.append(el("span", "ic", s.emoji), el("span", "an", s.label)); }
+      else if (s.bb) { li.append(el("span", "ic", "⬛"), el("span", "an", "Black border")); }
+      else { li.append(el("span", "ic", s.icons.join("")), el("span", "an", s.animal)); }
+      li.title = s.bb && card.kind !== "weather" ? s.text : (s.animal || s.label) + " — " + s.text;
+      ul.append(li);
+    });
+    c.append(ul);
+
+    const s = card.shifts[slotIdx];
+    const act = el("div", "active" + (s.bb ? " bb" : ""));
+    act.append(el("small", null, "Shift " + (slotIdx + 1) + " active"));
+    if (card.kind === "weather") act.append(document.createTextNode(s.emoji + " " + s.label + " — " + s.text));
+    else if (s.bb) act.append(document.createTextNode("⬛ " + s.text + " No animal, no reactions."));
+    else act.append(document.createTextNode(s.icons.join("") + " " + s.animal + " — " + s.text));
+    c.append(act);
+
+    if (card.presence) {
+      const pr = el("div", "presence");
+      if (card.kind === "weather") { pr.append(el("small", null, "Presence"), document.createTextNode(card.presence)); }
+      else { const t = presenceText(card.presence); pr.append(el("small", null, t.sub), document.createTextNode(t.line)); pr.title = card.presence.animal + ", " + card.presence.note + "."; }
+      c.append(pr);
     }
+    return c;
+  }
+
+  function renderRow(container, row, emptyText) {
+    container.replaceChildren();
+    if (!row) { container.append(el("div", "waiting", emptyText)); return; }
     row.forEach((id, i) => {
-      const slot = document.createElement("div"); slot.className = "slot";
-      const n = document.createElement("div"); n.className = "slot-n"; n.textContent = "Slot " + (i + 1);
-      slot.append(n);
-      if (id === null) {
-        const e = document.createElement("div"); e.className = "empty";
-        if (editable) {
-          const d = document.createElement("button"); d.textContent = "Draw a card";
-          d.addEventListener("click", ev => { ev.stopPropagation(); draw(i); });
-          const t = document.createElement("span"); t.textContent = "Empty slot";
-          e.append(t, d);
-        } else e.textContent = "Empty slot";
-        slot.append(e);
-      } else slot.append(cardEl(DECK[id], i, editable));
-      if (editable) {
-        slot.tabIndex = 0;
-        slot.setAttribute("aria-label", "Slot " + (i + 1) + (id === null ? ", empty" : ", " + DECK[id].name));
-        slot.addEventListener("click", () => tap(i));
-        slot.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); tap(i); } });
-        slot.addEventListener("dragover", e => { e.preventDefault(); slot.classList.add("over"); });
-        slot.addEventListener("dragleave", () => slot.classList.remove("over"));
-        slot.addEventListener("drop", e => {
-          e.preventDefault(); slot.classList.remove("over");
-          const from = parseInt(e.dataTransfer.getData("text/plain"), 10);
-          if (Number.isInteger(from)) swap(from, i);
-        });
-      }
+      const slot = el("div", "slot");
+      const n = el("div", "slot-n", "Slot " + (i + 1) + " ");
+      n.append(el("em", null, i < 3 ? "· morning" : "· afternoon"));
+      slot.append(n, cardEl(CARD[id], i));
       container.append(slot);
     });
   }
 
-  function render() { renderRow($("myRow"), mine, true); renderRow($("theirRow"), theirs, false); }
+  function render() {
+    // Setup panel: the host (or a player on their own) chooses; a guest watches the host's choices.
+    const canChoose = role !== "guest";
+    $("controls").hidden = !canChoose;
+    $("zooInfo").hidden = !canChoose;
+    $("setupNote").textContent = canChoose
+      ? "Both players get this same deal. Play modes take effect in a later build step; for now every card is face up."
+      : "The host chooses the zoo, season and play mode, and deals for both of you.";
 
-  // ---------- Row actions ----------
-  function swap(a, b) { if (a === b) return; [mine[a], mine[b]] = [mine[b], mine[a]]; selected = null; changed(); }
-  function tap(i) {
-    if (selected === null) { if (mine[i] !== null) { selected = i; render(); } }
-    else if (selected === i) { selected = null; render(); }
-    else swap(selected, i);
-  }
-  function draw(i) {
-    const free = DECK.map(c => c.id).filter(id => !mine.includes(id));
-    if (!free.length) return;
-    mine[i] = free[Math.floor(Math.random() * free.length)];
-    selected = null; changed();
-  }
-  function changed() { render(); if (transport) transport.send(mine.slice()); }
+    const t = $("today");
+    t.replaceChildren();
+    t.hidden = !day;
+    if (day) {
+      const z = ZOO[day.zoo], w = CARD[SEASON_CARD[day.season]];
+      t.append(el("b", null, z.name + " · " + w.emoji + " " + day.season + (day.seasonDrawn ? " (drawn)" : "") + " · " + MODE[day.mode].name));
+      const outNames = day.out.map(id => CARD[id].kind === "weather" ? "the weather (a clear day)" : CARD[id].name);
+      t.append(el("span", "absent", day.out.length ? "Absent today: " + outNames.join(", ") + "." : "Every card was dealt."));
+      t.append(el("span", "absent", MODE[day.mode].note));
+    }
 
-  // ---------- Codes ----------
-  const LETTERS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
-  function newCode() { let s = ""; for (let i = 0; i < 4; i++) s += LETTERS[Math.floor(Math.random() * LETTERS.length)]; return s; }
-  function cleanCode(raw) { const s = String(raw || "").toUpperCase().replace(/^CIX-?/, "").replace(/[^A-Z0-9]/g, ""); return s.length === 4 ? s : null; }
-
-  // ---------- Transport 1: Claude live sharing (when the page is a Claude link) ----------
-  async function roomTransport(c, role) {
-    const room = await window.claude.use("room");
-    if (!room) throw new Error("Live sharing isn't available for you on this link. Make sure you're signed in to Claude and were invited through Share.");
-    const r = await room.join("cix-" + c.toLowerCase());
-    const pick = peers => {
-      const other = peers.find(p => !p.sameTab && p.kind === "viewer" && p.presence && validRow(p.presence.row));
-      theirs = other ? other.presence.row.slice() : null;
-      setStatus(other ? "on" : "wait", other ? "Connected to opponent" : "Waiting for opponent");
-      render();
-    };
-    r.onPeers(ch => pick(ch.peers), e => { setStatus("err", "Connection lost"); setMsg(e.message); });
-    await r.presence({ role, row: mine.slice() });
-    return { send: row => { r.presence({ row }).catch(() => {}); }, leave: () => r.leave() };
+    renderRow($("myRow"), mine, role === "guest" ? "Waiting for the host to deal the day." : "Choose a zoo, season and play mode above, then shuffle and deal.");
+    let theirEmpty;
+    if (!code) theirEmpty = "No other player yet. Host or join a game to watch their day here.";
+    else if (!connected) theirEmpty = "Waiting for the other player to join with code " + code + "…";
+    else theirEmpty = "Waiting for the day to be dealt.";
+    renderRow($("theirRow"), connected ? theirs : null, theirEmpty);
   }
 
-  // ---------- Transport 2: PeerJS (when the page is on its own website) ----------
+  // ---------- Messages ----------
+  function send(m) { if (transport) transport.send(m); }
+  function receive(m) {
+    if (!m || typeof m !== "object") return;
+    if (m.t === "day" && role === "guest" && validDay(m.day)) {
+      day = m.day; mine = day.row.slice();
+      send({ t: "row", row: mine });
+    } else if (m.t === "row" && (m.row === null || validRow(m.row))) {
+      theirs = m.row ? m.row.slice() : null;
+    } else return;
+    render();
+  }
+  function onOpen() {
+    connected = true;
+    setStatus("on", "Connected to the other player");
+    if (role === "host" && day) send({ t: "day", day });
+    send({ t: "row", row: mine });
+    render();
+  }
+  function onClose() { connected = false; theirs = null; setStatus("wait", "The other player left"); render(); }
+
+  // ---------- Connection: PeerJS ----------
   function loadPeerJS() {
     if (window.Peer) return Promise.resolve(window.Peer);
     return new Promise((res, rej) => {
@@ -274,22 +529,22 @@ section.side { display: grid; gap: 10px; }
       document.head.append(s);
     });
   }
-  async function peerTransport(c, role) {
+  async function connect(c, asRole) {
     const Peer = await loadPeerJS();
-    const hostId = "cixgames-m1-" + c.toLowerCase();
+    const hostId = "cixgames-zoo-" + c.toLowerCase();
     let conn = null;
     const wire = cn => {
       conn = cn;
-      cn.on("open", () => { setStatus("on", "Connected to opponent"); cn.send({ type: "row", row: mine.slice() }); });
-      cn.on("data", d => { if (d && d.type === "row" && validRow(d.row)) { theirs = d.row.slice(); render(); } });
-      cn.on("close", () => { theirs = null; conn = null; setStatus("wait", "Opponent left"); render(); });
+      cn.on("open", onOpen);
+      cn.on("data", receive);
+      cn.on("close", () => { conn = null; onClose(); });
     };
     return await new Promise((res, rej) => {
-      const peer = role === "host" ? new Peer(hostId) : new Peer();
+      const peer = asRole === "host" ? new Peer(hostId) : new Peer();
       peer.on("open", () => {
-        if (role === "host") { setStatus("wait", "Waiting for opponent"); peer.on("connection", cn => { if (conn) { cn.close(); return; } wire(cn); }); }
+        if (asRole === "host") { setStatus("wait", "Waiting for the other player"); peer.on("connection", cn => { if (conn) { cn.close(); return; } wire(cn); }); }
         else { setStatus("wait", "Connecting…"); wire(peer.connect(hostId, { reliable: true })); }
-        res({ send: row => { if (conn && conn.open) conn.send({ type: "row", row }); }, leave: () => peer.destroy() });
+        res({ send: m => { if (conn && conn.open) conn.send(m); }, leave: () => peer.destroy() });
       });
       peer.on("error", e => {
         if (e.type === "unavailable-id") rej(Object.assign(new Error("taken"), { taken: true }));
@@ -299,16 +554,19 @@ section.side { display: grid; gap: 10px; }
     });
   }
 
-  const inClaude = !!(window.claude && typeof window.claude.use === "function");
-  async function connect(c, role) {
-    return inClaude ? roomTransport(c, role) : peerTransport(c, role);
-  }
+  // ---------- Lobby ----------
+  const LETTERS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+  const newCode = () => Array.from({ length: 4 }, () => LETTERS[randInt(LETTERS.length)]).join("");
+  const cleanCode = raw => { const s = String(raw || "").toUpperCase().replace(/^CIX-?/, "").replace(/[^A-Z0-9]/g, ""); return s.length === 4 ? s : null; };
 
-  function showInRoom(c) {
-    code = "CIX-" + c;
+  function showInRoom(c, asRole) {
+    code = "CIX-" + c; role = asRole;
     $("codeText").textContent = code;
     $("hostGroup").hidden = true; $("joinGroup").hidden = true; $("codeGroup").hidden = false;
-    $("lobbyHelp").textContent = "Send this code to the other player. Your row updates on their screen as you change it.";
+    $("lobbyHelp").textContent = asRole === "host"
+      ? "Send this code to the other player. You choose the zoo, season and play mode, and the deal goes to both of you."
+      : "You're in. The host chooses the zoo, season and play mode; you'll both get the same deal.";
+    if (asRole === "guest") { day = null; mine = null; }
     render();
   }
 
@@ -316,7 +574,7 @@ section.side { display: grid; gap: 10px; }
     setMsg(""); $("hostBtn").disabled = true; setStatus("wait", "Starting…");
     for (let tries = 0; tries < 4; tries++) {
       const c = newCode();
-      try { showInRoom(c); transport = await connect(c, "host"); return; }
+      try { showInRoom(c, "host"); transport = await connect(c, "host"); return; }
       catch (e) { if (!e.taken) { setStatus("err", "Couldn't start"); setMsg(e.message); break; } }
     }
     $("hostBtn").disabled = false;
@@ -327,27 +585,29 @@ section.side { display: grid; gap: 10px; }
     const c = cleanCode($("codeInput").value);
     if (!c) { setMsg("Codes look like CIX-K7Q2: four letters or numbers."); return; }
     $("joinBtn").disabled = true; setStatus("wait", "Connecting…");
-    try { showInRoom(c); transport = await connect(c, "guest"); }
+    try { showInRoom(c, "guest"); transport = await connect(c, "guest"); }
     catch (e) { setStatus("err", "Couldn't connect"); setMsg(e.message); $("joinBtn").disabled = false; }
   }
   $("joinBtn").addEventListener("click", join);
   $("codeInput").addEventListener("keydown", e => { if (e.key === "Enter") join(); });
 
+  function selectCode() { const r = document.createRange(); r.selectNodeContents($("codeText")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); }
   $("copyBtn").addEventListener("click", () => {
     const done = () => { $("copyBtn").textContent = "Copied"; setTimeout(() => $("copyBtn").textContent = "Copy code", 1500); };
-    try { navigator.clipboard.writeText(code).then(done, () => selectCode()); } catch { selectCode(); }
+    try { navigator.clipboard.writeText(code).then(done, selectCode); } catch { selectCode(); }
   });
-  function selectCode() { const r = document.createRange(); r.selectNodeContents($("codeText")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); }
 
   $("leaveBtn").addEventListener("click", () => {
     try { transport && transport.leave(); } catch {}
-    transport = null; code = null; theirs = null;
+    transport = null; code = null; theirs = null; connected = false; role = null;
     $("hostGroup").hidden = false; $("joinGroup").hidden = false; $("codeGroup").hidden = true;
     $("hostBtn").disabled = false; $("joinBtn").disabled = false;
-    $("lobbyHelp").textContent = "Host a game to get a code, then send the code to the other player. They type it here and you're connected.";
+    $("lobbyHelp").textContent = "Host a game to get a code, then send the code to the other player. They type it here and you're connected. Each of you plays your own zoo day; you can watch each other's.";
     setStatus("off", "Not connected"); setMsg(""); render();
   });
 
   render();
 })();
 </script>
+</body>
+</html>
