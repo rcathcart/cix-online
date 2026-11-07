@@ -120,12 +120,39 @@ section.side { display: grid; gap: 10px; }
 .presence small { display: block; font-family: var(--f-mono); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-2); }
 
 .waiting { grid-column: 1 / -1; display: grid; place-items: center; min-height: 120px; color: var(--ink-2); text-align: center; padding: 16px; }
+
+/* Resolution: the next card to resolve is outlined; resolved cards carry an "earned" strip. */
+.slot.next .cardx { box-shadow: 0 0 0 3px var(--accent); }
+.slot.done .cardx { border-style: solid; }
+.earned { font-size: 12px; background: var(--accent-soft); border-radius: 6px; padding: 3px 6px; overflow-wrap: anywhere; }
+.earned b { font-weight: 600; }
+.bar { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.bar .spacer { flex: 1; }
+.tally { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; font-size: 14px; }
+.tally span { white-space: nowrap; }
+.tally b { font-family: var(--f-display); font-weight: 600; font-size: 16px; }
+.tally .zero { color: var(--ink-2); }
+.career { font-family: var(--f-display); font-weight: 600; font-size: 17px; }
+
+.log { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 10px 14px; display: grid; gap: 6px; }
+.log .lhead { font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-2); }
+.log .line { display: grid; gap: 3px; font-size: 14px; padding: 4px 0; border-top: 1px dashed var(--line); }
+.log .line:first-of-type { border-top: 0; }
+.log .line b { font-weight: 600; }
+.log .line .note { color: var(--ink-2); font-size: 13px; }
+.log .line.end { border-top: 2px solid var(--line); margin-top: 2px; padding-top: 8px; }
+.log .empty { color: var(--ink-2); font-size: 13px; }
+.tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.tags span { font-family: var(--f-mono); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent);
+  border: 1px solid var(--accent); border-radius: 999px; padding: 1px 7px; }
+body[data-tags="off"] .tags { display: none; }
+.chk { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; color: var(--ink-2); cursor: pointer; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <div class="brand"><h1>CIX Online</h1><span>CIX Zoo · build step 1 of 4: real cards</span></div>
+    <div class="brand"><h1>CIX Online</h1><span>CIX Zoo · build step 2 of 4: the day resolves</span></div>
     <div class="status" id="status" data-s="off" role="status"><span class="dot"></span><span id="statusText">Not connected</span></div>
   </header>
 
@@ -157,17 +184,29 @@ section.side { display: grid; gap: 10px; }
     <p class="zooinfo" id="zooInfo"></p>
     <p class="hint" id="setupNote"></p>
     <div class="today" id="today" hidden></div>
+    <label class="chk"><input type="checkbox" id="tagsChk" checked> Show CIX concept tags in the day logs</label>
   </section>
 
   <section class="side" aria-label="Other player's day">
     <div class="side-head"><h2>Other player's day</h2><span class="tag">Watching</span></div>
     <div class="row" id="theirRow"></div>
+    <div class="bar" id="theirBar" hidden><div class="tally" id="theirTally"></div><span class="spacer"></span><span class="career" id="theirCareer"></span></div>
+    <div class="log" id="theirLog" hidden></div>
   </section>
 
   <section class="side" aria-label="Your day">
     <div class="side-head"><h2>Your day</h2><span class="tag">Your row</span>
-      <span class="hint">A card in slot N activates its shift N. Slots 1–3 are the morning, 4–6 the afternoon.</span></div>
+      <span class="hint">A card in slot N activates its shift N. Slots 1–3 are the morning, 4–6 the afternoon. Resolve the day left to right.</span></div>
     <div class="row" id="myRow"></div>
+    <div class="bar" id="myBar" hidden>
+      <button class="primary" id="nextBtn">Resolve slot 1</button>
+      <button id="allBtn">Resolve the whole day</button>
+      <button id="resetBtn">Start the day over</button>
+      <span class="spacer"></span>
+      <div class="tally" id="myTally"></div>
+      <span class="career" id="myCareer"></span>
+    </div>
+    <div class="log" id="myLog" hidden></div>
   </section>
 </div>
 
@@ -363,7 +402,9 @@ section.side { display: grid; gap: 10px; }
   // day: the shared deal, chosen by the host. { zoo, season, seasonDrawn, mode, row:[6 card ids], out:[card ids] }
   let day = null;
   let mine = null;        // my row (card ids, slots 1–6); later steps change it with the Parent token
+  let prog = 0;           // how many of my slots are resolved, 0–6
   let theirs = null;      // the other player's row, as they last sent it
+  let theirProg = 0;
   let role = null;        // null (on your own), "host" or "guest"
   let connected = false;
   let transport = null;
@@ -406,13 +447,69 @@ section.side { display: grid; gap: 10px; }
     if (season === "random") { season = shuffle(Object.keys(SEASON_CARD))[0]; seasonDrawn = true; }
     const deck = shuffle([...ZOO[zoo].cards, SEASON_CARD[season]]);
     day = { zoo, season, seasonDrawn, mode: $("modeSel").value, row: deck.slice(0, 6), out: deck.slice(6) };
-    mine = day.row.slice();
+    mine = day.row.slice(); prog = 0;
     if (!connected) theirs = null;
     send({ t: "day", day });
-    send({ t: "row", row: mine });
+    sendRow();
     render();
   }
   $("dealBtn").addEventListener("click", deal);
+  $("tagsChk").addEventListener("change", () => { document.body.dataset.tags = $("tagsChk").checked ? "on" : "off"; });
+
+  // ---------- Resolving the day (CIX Zoo rules, build step 2) ----------
+  // Implemented here: positional activation, black borders, always-seen bonuses, the tally and the career.
+  // Not yet: weather effects, the Parent token and its wild icon, play modes (step 3 and 4).
+  const CAREER = { "😂": "Cartoonist", "🔬": "Scientist", "😱": "Wildlife Ranger", "❤️": "Vet", "❓": "Explorer", "⏳": "Wildlife Photographer" };
+  const REACTION = { "😂": "Funny", "🔬": "Fascinating", "😱": "Scary", "❤️": "Love", "❓": "Questions", "⏳": "Time" };
+  const an = word => (/^[aeiou]/i.test(word) ? "an " : "a ") + word;
+
+  // One slot's result: what the log says, which CIX concepts it shows, and the icons it earns.
+  function resolveSlot(row, i) {
+    const card = CARD[row[i]], s = card.shifts[i];
+    const r = { slot: i + 1, card, shift: "", notes: [], tags: [], icons: [] };
+    if (card.kind === "weather") {
+      r.shift = s.emoji + " " + s.label + " — " + s.text;
+      r.notes.push("Weather effects arrive in build step 3; for now the weather card earns nothing.");
+      r.tags.push("Positional activation", "Weather");
+      return r;
+    }
+    if (s.bb) { r.shift = "⬛ " + s.text + " No animal, no reactions."; r.tags.push("Positional activation", "Black border"); }
+    else { r.shift = s.animal + " " + s.icons.join(""); r.icons.push(...s.icons); r.tags.push("Positional activation"); }
+
+    const p = card.presence;
+    if (p.kind === "double") {
+      if (s.bb) r.notes.push(p.animal + " has nothing to double.");
+      else { r.notes.push(p.animal + " doubles it: +" + s.icons.join("")); r.icons.push(...s.icons); }
+    } else if (p.kind === "flat") {
+      r.notes.push(p.animal + " +" + p.bonus.join("") + (s.bb ? " (the always-seen animal ignores the black border)" : ""));
+      r.icons.push(...p.bonus);
+    } else {
+      const applies = p.kind === "morning" ? i < 3 : i >= 3;
+      if (applies) { r.notes.push(p.animal + " " + p.kind + " bonus +" + p.bonus.join("")); r.icons.push(...p.bonus); }
+      else r.notes.push(p.animal + " bonus is " + p.kind + " only: nothing.");
+    }
+    r.tags.push("Presence");
+    return r;
+  }
+
+  function resolveDay(row, n) {
+    const lines = [];
+    const tally = Object.fromEntries(ICONS.map(ic => [ic, 0]));
+    for (let i = 0; i < n; i++) { const r = resolveSlot(row, i); r.icons.forEach(ic => tally[ic]++); lines.push(r); }
+    const max = Math.max(...ICONS.map(ic => tally[ic]));
+    const top = ICONS.filter(ic => tally[ic] === max);
+    let career;
+    if (top.length === 1) career = an(CAREER[top[0]]);
+    else if (top.length === 2) career = an(CAREER[top[0]]) + " and " + an(CAREER[top[1]]);
+    else career = "a little bit of everything";
+    return { lines, tally, career, done: n >= 6, tied: top.length };
+  }
+
+  function sendRow() { send({ t: "row", row: mine, prog }); }
+  function step() { if (mine && prog < 6) { prog++; sendRow(); render(); } }
+  $("nextBtn").addEventListener("click", step);
+  $("allBtn").addEventListener("click", () => { if (mine) { prog = 6; sendRow(); render(); } });
+  $("resetBtn").addEventListener("click", () => { if (mine) { prog = 0; sendRow(); render(); } });
 
   // ---------- Rendering ----------
   function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
@@ -458,16 +555,65 @@ section.side { display: grid; gap: 10px; }
     return c;
   }
 
-  function renderRow(container, row, emptyText) {
+  function renderRow(container, row, n, emptyText) {
     container.replaceChildren();
-    if (!row) { container.append(el("div", "waiting", emptyText)); return; }
+    if (!row) { container.append(el("div", "waiting", emptyText)); return null; }
+    const res = resolveDay(row, n);
     row.forEach((id, i) => {
-      const slot = el("div", "slot");
-      const n = el("div", "slot-n", "Slot " + (i + 1) + " ");
-      n.append(el("em", null, i < 3 ? "· morning" : "· afternoon"));
-      slot.append(n, cardEl(CARD[id], i));
+      const slot = el("div", "slot" + (i < n ? " done" : i === n ? " next" : ""));
+      const h = el("div", "slot-n", "Slot " + (i + 1) + " ");
+      h.append(el("em", null, i < 3 ? "· morning" : "· afternoon"));
+      const c = cardEl(CARD[id], i);
+      if (i < n) {
+        const r = res.lines[i];
+        const e = el("div", "earned");
+        e.append(el("b", null, "✓ "), document.createTextNode(r.icons.length ? "+" + r.icons.join("") : "nothing"));
+        c.append(e);
+      }
+      slot.append(h, c);
       container.append(slot);
     });
+    return res;
+  }
+
+  function renderTally(container, careerEl, res) {
+    container.replaceChildren();
+    const order = ICONS.slice().sort((a, b) => res.tally[b] - res.tally[a] || ICONS.indexOf(a) - ICONS.indexOf(b));
+    order.forEach(ic => {
+      const s = el("span", res.tally[ic] ? "" : "zero");
+      s.append(document.createTextNode(ic + " "), el("b", null, String(res.tally[ic])));
+      s.title = REACTION[ic] + " → " + CAREER[ic];
+      container.append(s);
+    });
+    careerEl.textContent = res.done ? "→ " + res.career : "";
+  }
+
+  function renderLog(container, res, whose) {
+    container.replaceChildren();
+    container.append(el("div", "lhead", whose + " · day log"));
+    if (!res.lines.length) { container.append(el("div", "empty", "Nothing resolved yet. The log fills in one slot at a time, left to right.")); return; }
+    res.lines.forEach(r => {
+      const line = el("div", "line");
+      const head = el("div");
+      head.append(el("b", null, "Slot " + r.slot + " — " + r.card.name + ": "), document.createTextNode(r.shift));
+      line.append(head);
+      r.notes.forEach(t => line.append(el("div", "note", "· " + t)));
+      const tags = el("div", "tags"); r.tags.forEach(t => tags.append(el("span", null, t))); line.append(tags);
+      container.append(line);
+    });
+    if (res.done) {
+      const line = el("div", "line end");
+      const head = el("div");
+      const order = ICONS.filter(ic => res.tally[ic]).sort((a, b) => res.tally[b] - res.tally[a] || ICONS.indexOf(a) - ICONS.indexOf(b));
+      head.append(el("b", null, "Day's end — tally: "), document.createTextNode(order.length ? order.map(ic => ic + " " + res.tally[ic]).join(" · ") : "no reactions at all"),
+        el("b", null, " → " + res.career));
+      line.append(head);
+      if (res.tied === 2) line.append(el("div", "note", "· Two reactions tied, so both careers count."));
+      if (res.tied >= 3) line.append(el("div", "note", "· Three or more reactions tied: a little bit of everything."));
+      line.append(el("div", "note", "· The Parent token's wild icon and the weather's effects come in build step 3; they are not counted yet."));
+      const tags = el("div", "tags"); tags.append(el("span", null, "Tally"), el("span", null, "Career")); line.append(tags);
+      container.append(line);
+    }
   }
 
   function render() {
@@ -490,12 +636,21 @@ section.side { display: grid; gap: 10px; }
       t.append(el("span", "absent", MODE[day.mode].note));
     }
 
-    renderRow($("myRow"), mine, role === "guest" ? "Waiting for the host to deal the day." : "Choose a zoo, season and play mode above, then shuffle and deal.");
+    const myRes = renderRow($("myRow"), mine, prog, role === "guest" ? "Waiting for the host to deal the day." : "Choose a zoo, season and play mode above, then shuffle and deal.");
+    $("myBar").hidden = $("myLog").hidden = !myRes;
+    if (myRes) {
+      $("nextBtn").disabled = myRes.done; $("nextBtn").textContent = myRes.done ? "Day's end" : "Resolve slot " + (prog + 1);
+      $("allBtn").disabled = myRes.done; $("resetBtn").disabled = prog === 0;
+      renderTally($("myTally"), $("myCareer"), myRes); renderLog($("myLog"), myRes, "Your day");
+    }
+
     let theirEmpty;
     if (!code) theirEmpty = "No other player yet. Host or join a game to watch their day here.";
     else if (!connected) theirEmpty = "Waiting for the other player to join with code " + code + "…";
     else theirEmpty = "Waiting for the day to be dealt.";
-    renderRow($("theirRow"), connected ? theirs : null, theirEmpty);
+    const theirRes = renderRow($("theirRow"), connected ? theirs : null, theirProg, theirEmpty);
+    $("theirBar").hidden = $("theirLog").hidden = !theirRes;
+    if (theirRes) { renderTally($("theirTally"), $("theirCareer"), theirRes); renderLog($("theirLog"), theirRes, "Other player's day"); }
   }
 
   // ---------- Messages ----------
@@ -503,10 +658,11 @@ section.side { display: grid; gap: 10px; }
   function receive(m) {
     if (!m || typeof m !== "object") return;
     if (m.t === "day" && role === "guest" && validDay(m.day)) {
-      day = m.day; mine = day.row.slice();
-      send({ t: "row", row: mine });
+      day = m.day; mine = day.row.slice(); prog = 0;
+      sendRow();
     } else if (m.t === "row" && (m.row === null || validRow(m.row))) {
       theirs = m.row ? m.row.slice() : null;
+      theirProg = Number.isInteger(m.prog) && m.prog >= 0 && m.prog <= 6 ? m.prog : 0;
     } else return;
     render();
   }
@@ -514,7 +670,7 @@ section.side { display: grid; gap: 10px; }
     connected = true;
     setStatus("on", "Connected to the other player");
     if (role === "host" && day) send({ t: "day", day });
-    send({ t: "row", row: mine });
+    sendRow();
     render();
   }
   function onClose() { connected = false; theirs = null; setStatus("wait", "The other player left"); render(); }
@@ -566,7 +722,7 @@ section.side { display: grid; gap: 10px; }
     $("lobbyHelp").textContent = asRole === "host"
       ? "Send this code to the other player. You choose the zoo, season and play mode, and the deal goes to both of you."
       : "You're in. The host chooses the zoo, season and play mode; you'll both get the same deal.";
-    if (asRole === "guest") { day = null; mine = null; }
+    if (asRole === "guest") { day = null; mine = null; prog = 0; }
     render();
   }
 
@@ -599,7 +755,7 @@ section.side { display: grid; gap: 10px; }
 
   $("leaveBtn").addEventListener("click", () => {
     try { transport && transport.leave(); } catch {}
-    transport = null; code = null; theirs = null; connected = false; role = null;
+    transport = null; code = null; theirs = null; theirProg = 0; connected = false; role = null;
     $("hostGroup").hidden = false; $("joinGroup").hidden = false; $("codeGroup").hidden = true;
     $("hostBtn").disabled = false; $("joinBtn").disabled = false;
     $("lobbyHelp").textContent = "Host a game to get a code, then send the code to the other player. They type it here and you're connected. Each of you plays your own zoo day; you can watch each other's.";
