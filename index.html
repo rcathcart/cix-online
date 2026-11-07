@@ -524,6 +524,8 @@ body[data-tags="off"] .tags { display: none; }
   // =====================================================================
   const CAREER = { "😂": "Cartoonist", "🔬": "Scientist", "😱": "Wildlife Ranger", "❤️": "Vet", "❓": "Explorer", "⏳": "Wildlife Photographer" };
   const REACTION = { "😂": "Funny", "🔬": "Fascinating", "😱": "Scary", "❤️": "Love", "❓": "Questions", "⏳": "Time" };
+  // Two-way ties read "a Vet who explores": the career earlier in icon order is the noun, the later one becomes this phrase (Robert, 2026-11-06).
+  const TIE_VERB = { "🔬": "experiments", "😱": "protects wildlife", "❤️": "heals animals", "❓": "explores", "⏳": "photographs wildlife" };
   const an = word => (/^[aeiou]/i.test(word) ? "an " : "a ") + word;
   const WINTER = "ZOO-015", POLAR = "ZOO-004";
   const zeroTally = () => Object.fromEntries(ICONS.map(ic => [ic, 0]));
@@ -591,7 +593,7 @@ body[data-tags="off"] .tags { display: none; }
     const top = ICONS.filter(ic => tally[ic] === max);
     let career;
     if (top.length === 1) career = an(CAREER[top[0]]);
-    else if (top.length === 2) career = an(CAREER[top[0]]) + " and " + an(CAREER[top[1]]);
+    else if (top.length === 2) career = an(CAREER[top[0]]) + " who " + TIE_VERB[top[1]];   // first in icon order is the noun
     else career = "a little bit of everything";
     return { career, tied: top.length };
   }
