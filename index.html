@@ -160,12 +160,19 @@ body[data-tags="off"] .tags { display: none; }
 .bar.wild button { font-size: 16px; padding: 4px 10px; }
 .log .line.swap { background: var(--accent-soft); border-radius: 6px; padding: 6px 8px; border-top: 0; }
 .log .line.whatif { color: var(--ink-2); }
+.cardx.down { background: var(--table-2); border-style: dashed; }
+.cardx.down .back { font-size: 12px; color: var(--ink-2); line-height: 1.35; }
+.cardx.down .facedown { font-family: var(--f-mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); }
+.slot-n .fd { font-style: normal; color: var(--warn); }
+.peekmode .slot.can .cardx { cursor: pointer; outline: 2px dashed var(--warn); outline-offset: 3px; }
+.peekmode .slot:not(.can) .cardx { opacity: .55; }
+.bar .ready { color: var(--ok); font-weight: 600; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <div class="brand"><h1>CIX Online</h1><span>CIX Zoo · build step 3 of 4: Parent token and weather</span></div>
+    <div class="brand"><h1>CIX Online</h1><span>CIX Zoo · build step 4 of 4: play modes</span></div>
     <div class="status" id="status" data-s="off" role="status"><span class="dot"></span><span id="statusText">Not connected</span></div>
   </header>
 
@@ -193,6 +200,7 @@ body[data-tags="off"] .tags { display: none; }
       <label>Season <select id="seasonSel"></select></label>
       <label>Play mode <select id="modeSel"></select></label>
       <button class="primary" id="dealBtn">Shuffle and deal</button>
+      <label class="chk" id="togetherLbl"><input type="checkbox" id="togetherChk"> Step together</label>
     </div>
     <p class="zooinfo" id="zooInfo"></p>
     <p class="hint" id="setupNote"></p>
@@ -215,6 +223,7 @@ body[data-tags="off"] .tags { display: none; }
       <button class="primary" id="nextBtn">Resolve slot 1</button>
       <button id="allBtn">Resolve the whole day</button>
       <button id="swapBtn">Spend Parent token</button>
+      <button id="peekBtn" hidden>Peek with Parent token</button>
       <button id="resetBtn">Start the day over</button>
       <span class="spacer"></span>
       <div class="tally" id="myTally"></div>
@@ -378,6 +387,26 @@ body[data-tags="off"] .tags { display: none; }
       "🦆|Migration|geese overhead: +❓, and the next exhibit gives +🔬.",
       "🍎|Apple Cider|+❤️; an unused Parent token counts as two wild icons."]),
   ];
+  // Card backs (Back Flavor in Notion): what a face-down card shows.
+  const BACK = {
+    "ZOO-001": "The savanna exhibit stretches across a long, golden field with a raised boardwalk. Herds wander between acacia trees, and from the overlook you can see almost the whole plain. Some animals are always out in the open; others only show up if you catch them at the right moment.",
+    "ZOO-002": "A domed greenhouse full of mist, vines, and waterfalls. The air is heavy and the canopy is thick, so most animals are hiding somewhere above, below, or behind the leaves. Every visit, a different set of them decides to come out.",
+    "ZOO-003": "A dark, cool building with floor-to-ceiling tanks and a glass tunnel that runs underneath the main one. Fish drift in and out of view, and what you see depends on who happens to swim by while you are standing there.",
+    "ZOO-004": "A chilled exhibit built to look like the far north and far south, with an ice shelf, a deep pool, and an underwater viewing window. The penguins are always on show; the rest come and go between the ice, the water, and their dens.",
+    "ZOO-005": "A walk-through exhibit of dusty trails, gum trees, and a dim night-house for the animals that only come out after dark. The kangaroos are everywhere, but the others are shy, sleepy, or nocturnal, so you only meet some of them on any given day.",
+    "ZOO-006": "A long, warm hall of glass enclosures, each one a tiny desert, swamp, or jungle. Reptiles are masters of sitting still, so many enclosures look empty at first. Look closely and patiently, and a different few reveal themselves each visit.",
+    "ZOO-007": "Every zoo day happens under some kind of sky. Most days you never think about it; other days the weather decides where you go, what you see, and how long anyone wants to stay outside. When the weather card shows up, one exhibit gets left out of the day's story.",
+    "ZOO-008": "A tall, tangled forest of ropes, platforms, and climbing trees, with a glass-walled indoor den for cold or rainy days. Primates are curious and clever, so who comes out depends on their mood, the food, and whether they feel like showing off.",
+    "ZOO-009": "A steep, winding trail through bamboo groves and rocky ledges built to look like the mountains of central Asia. Many of these animals are shy, solitary, or asleep in the afternoon, so the trail rewards a patient walk and a lucky moment.",
+    "ZOO-010": "A giant walk-through net filled with trees, ponds, and feeders, where birds fly free right over the path. Some perch in plain sight; others flash past or hide high in the branches, so every walk through the aviary is different.",
+    "ZOO-011": "A small farm with a red barn, a petting yard, and a coop full of chickens. This is the one place in the zoo where you can touch the animals, but farm life runs on its own schedule of feeding, cleaning, and naps.",
+    "ZOO-012": "A warm, dim building of small glass tanks, a glowing black-light room, and a butterfly garden at the end. Bugs are small and well hidden, so you have to lean in close, and what you spot depends on who is willing to crawl out.",
+    "ZOO-013": "A long, shady loop through pine woods, a rushing stream, and an open prairie. It is the longest walk in the zoo, and the animals have room to roam, so some days they are right by the path and some days they are far off in the trees.",
+    "ZOO-014": "Summer days at the zoo are long and bright, and the whole family wants to stay until closing. But heat changes everything: animals nap in the shade, kids need breaks, and the best moments come early in the morning or late in the evening.",
+    "ZOO-015": "Hardly anyone visits the zoo in winter, so the paths are quiet and the animals that love the cold are at their best. The rest of the zoo moves indoors, and the wind decides how long anyone can stand to be outside.",
+    "ZOO-016": "Fall at the zoo means cool air, crunchy leaves, and animals getting ready for winter. The days are getting shorter, the geese are leaving, and the whole zoo smells like apples and pumpkins. It's a good season for a slow, cozy visit."
+  };
+  CARDS.forEach(c => { c.back = BACK[c.id]; });
   const CARD = Object.fromEntries(CARDS.map(c => [c.id, c]));
   const SEASON_CARD = { Spring: "ZOO-007", Summer: "ZOO-014", Fall: "ZOO-016", Winter: "ZOO-015" };
 
@@ -425,7 +454,9 @@ body[data-tags="off"] .tags { display: none; }
   let connected = false;
   let transport = null;
   let code = null;
-  let swapMode = false, pick = null;
+  let swapMode = false, pick = null, peekMode = false;
+  let together = false;              // host's Step together switch, shared with the guest
+  let myReadyAt = null, theirReadyAt = null;   // slot index each player is ready to resolve together
 
   const $ = id => document.getElementById(id);
   const setStatus = (s, text) => { $("status").dataset.s = s; $("statusText").textContent = text; };
@@ -439,7 +470,7 @@ body[data-tags="off"] .tags { display: none; }
   const slotOk = n => Number.isInteger(n) && n >= 0 && n < 6;
   function validActions(a) {
     return Array.isArray(a) && a.length <= 40 && a.every(x => x === "step" ||
-      (x && typeof x === "object" && ((x.t === "swap" && slotOk(x.a) && slotOk(x.b)) || (x.t === "wild" && ICONS.includes(x.ic)))));
+      (x && typeof x === "object" && ((x.t === "swap" && slotOk(x.a) && slotOk(x.b)) || (x.t === "peek" && slotOk(x.i)) || (x.t === "wild" && ICONS.includes(x.ic)))));
   }
 
   // ---------- Setup ----------
@@ -469,14 +500,15 @@ body[data-tags="off"] .tags { display: none; }
     if (season === "random") { season = shuffle(Object.keys(SEASON_CARD))[0]; seasonDrawn = true; }
     const deck = shuffle([...ZOO[zoo].cards, SEASON_CARD[season]]);
     day = { zoo, season, seasonDrawn, mode: $("modeSel").value, row: deck.slice(0, 6), out: deck.slice(6) };
-    actions = []; swapMode = false; pick = null;
+    actions = []; swapMode = false; pick = null; peekMode = false; myReadyAt = theirReadyAt = null;
     if (!connected) theirActions = null;
-    send({ t: "day", day });
+    send({ t: "day", day, together });
     sendState();
     render();
   }
   $("dealBtn").addEventListener("click", deal);
   $("tagsChk").addEventListener("change", () => { document.body.dataset.tags = $("tagsChk").checked ? "on" : "off"; });
+  $("togetherChk").addEventListener("change", () => { together = $("togetherChk").checked; myReadyAt = theirReadyAt = null; send({ t: "together", on: together }); render(); });
 
   // =====================================================================
   // Resolving the day: the CIX Zoo rules as written on its Notion page.
@@ -499,15 +531,27 @@ body[data-tags="off"] .tags { display: none; }
   const unspentOf = st => st.tokens - st.spent - st.lost;
   const nameAt = (row, i) => CARD[row[i]].name + " (slot " + (i + 1) + ")";
 
-  function replay(dealRow, acts) {
-    const st = { row: dealRow.slice(), prog: 0, tokens: 1, spent: 0, lost: 0, locked: false, done: false,
+  function replay(dealRow, acts, mode) {
+    mode = MODE[mode] ? mode : "open";
+    const st = { row: dealRow.slice(), mode, prog: 0, tokens: 1, spent: 0, lost: 0, locked: false, done: false,
+      up: [false, false, false, false, false, false], peeks: 0, winterTaken: false,
       lines: [], earned: [[], [], [], [], [], []], doubled: [false, false, false, false, false, false],
       mods: [{}, {}, {}, {}, {}, {}], clocksAt: -1, penguin: false, rainbowWild: 0, cider: false,
       wildTotal: 0, wilds: [], swaps: 0, setup: [] };
-    if (st.row.includes(WINTER)) { st.tokens = 2; st.setup.push("Winter Weather is face up from the start, so Snow day gives a second Parent token (two to spend, each unused one a wild icon)."); }
+    // Which cards start face up depends on the play mode (reveal mode).
+    st.row.forEach((id, i) => {
+      if (mode === "open") st.up[i] = true;
+      else if (mode === "half" && i < 3) st.up[i] = true;
+      else if (mode === "forecast" && CARD[id].kind === "weather") { st.up[i] = true; st.setup.push("Forecast: the weather card is revealed first, in slot " + (i + 1) + ": " + CARD[id].shifts[i].emoji + " " + CARD[id].shifts[i].label + "."); }
+    });
+    if (mode === "surprise") st.setup.push("Surprise Day: every card is face down; each is revealed as you reach it.");
+    if (mode === "peek") st.setup.push("Peek Day: every card is face down. The Parent token can swap two cards or peek at one.");
+    if (mode === "half") st.setup.push("Half-Planned Day: the morning is face up, the afternoon face down.");
+    checkWinter(st, "from the start");
     for (const a of acts) {
       if (a === "step") { if (!st.done) resolveNext(st); }
       else if (a.t === "swap") trySwap(st, a.a, a.b);
+      else if (a.t === "peek") tryPeek(st, a.i);
       else if (a.t === "wild") { if (st.done && st.wilds.length < st.wildTotal) st.wilds.push(a.ic); }
     }
     st.tally = zeroTally();
@@ -518,6 +562,28 @@ body[data-tags="off"] .tags { display: none; }
     st.wildLeft = st.done ? st.wildTotal - st.wilds.length : 0;
     st.unspent = st.tokens - st.spent - st.lost;
     return st;
+  }
+
+  // Snow day: the second Parent token comes when Winter Weather is face up (ruling R4: at setup if it starts face up).
+  function checkWinter(st, when) {
+    const j = st.row.indexOf(WINTER);
+    if (st.winterTaken || j < 0 || !st.up[j]) return;
+    st.winterTaken = true; st.tokens++;
+    const t = "Snow day: Winter Weather is face up " + when + ", so you take a second Parent token (each unused one becomes a wild icon).";
+    if (when === "from the start") st.setup.push(t); else note(st, t);
+  }
+  // A black border blocks a swap only when it can be seen (the card is face up).
+  const visibleBB = (st, i) => st.up[i] && showsBB(st.row, i);
+
+  function tryPeek(st, i) {
+    if (st.mode !== "peek" || st.done || i < st.prog || st.up[i] || unspentOf(st) <= 0 || st.locked) return false;
+    st.up[i] = true; st.spent++; st.peeks++;
+    const c = CARD[st.row[i]], sh = c.shifts[i];
+    const what = c.kind === "weather" ? sh.emoji + " " + sh.label : sh.bb ? "⬛ its black border" : sh.animal + " " + sh.icons.join("");
+    st.lines.push({ kind: "swap", text: "Parent token spent to peek at " + nameAt(st.row, i) + ": " + what + ". It stays face up.", tags: ["Parent token", "Reveal mode"] });
+    checkWinter(st, "after a peek");
+    if (st.pendingNotes) { st.lines[st.lines.length - 1].text += " " + st.pendingNotes.join(" "); st.pendingNotes = null; }
+    return true;
   }
 
   function careerOf(tally) {
@@ -532,11 +598,12 @@ body[data-tags="off"] .tags { display: none; }
 
   function trySwap(st, a, b) {
     if (st.done || a === b || a < st.prog || b < st.prog || unspentOf(st) <= 0 || st.locked) return false;
-    if (showsBB(st.row, a) || showsBB(st.row, b)) return false;
-    const na = nameAt(st.row, a), nb = nameAt(st.row, b);
+    if (visibleBB(st, a) || visibleBB(st, b)) return false;
+    const na = nameAt(st.row, a), nb = nameAt(st.row, b), blind = !st.up[a] || !st.up[b];
     [st.row[a], st.row[b]] = [st.row[b], st.row[a]];
+    [st.up[a], st.up[b]] = [st.up[b], st.up[a]];
     st.spent++; st.swaps++;
-    st.lines.push({ kind: "swap", text: "Parent token spent: swapped " + na + " and " + nb + ". Each now resolves the shift for its new slot.", tags: ["Parent token", "Positional activation"] });
+    st.lines.push({ kind: "swap", text: "Parent token spent: swapped " + na + " and " + nb + (blind ? " blind" : "") + ". Each now resolves the shift for its new slot.", tags: ["Parent token", "Positional activation"].concat(blind ? ["Reveal mode"] : []) });
     return true;
   }
 
@@ -544,6 +611,7 @@ body[data-tags="off"] .tags { display: none; }
     const i = st.prog, row = st.row, card = CARD[row[i]], s = card.shifts[i], m = st.mods[i];
     const r = { kind: "slot", slot: i + 1, card, shift: "", notes: [], tags: ["Positional activation"], icons: [] };
     const add = (...ics) => r.icons.push(...ics);
+    if (!st.up[i]) { st.up[i] = true; r.revealed = true; r.tags.push("Reveal mode"); checkWinter(st, "now"); }
     const nextIs = k => i + k < 6 ? nameAt(row, i + k) : null;
 
     if (card.kind === "weather") {
@@ -556,8 +624,8 @@ body[data-tags="off"] .tags { display: none; }
       if (card.id === "ZOO-007") {          // Spring
         if (k === 0) {
           if (i + 2 < 6) {
-            if (showsBB(row, i + 1) || showsBB(row, i + 2)) note("A visible black border blocks the swap: " + nameAt(row, i + 1) + " and " + nameAt(row, i + 2) + " stay put.");
-            else { const n1 = nameAt(row, i + 1), n2 = nameAt(row, i + 2); [row[i + 1], row[i + 2]] = [row[i + 2], row[i + 1]]; note("Swapped " + n1 + " and " + n2 + "; each now resolves the shift for its new slot."); }
+            if (visibleBB(st, i + 1) || visibleBB(st, i + 2)) note("A visible black border blocks the swap: " + nameAt(row, i + 1) + " and " + nameAt(row, i + 2) + " stay put.");
+            else { const n1 = nameAt(row, i + 1), n2 = nameAt(row, i + 2), blind = !st.up[i + 1] || !st.up[i + 2]; [row[i + 1], row[i + 2]] = [row[i + 2], row[i + 1]]; [st.up[i + 1], st.up[i + 2]] = [st.up[i + 2], st.up[i + 1]]; note("Swapped " + n1 + " and " + n2 + (blind ? " blind" : "") + "; each now resolves the shift for its new slot."); }
           }
         } else if (k === 1) { st.mods[after].noPresence = "Fog"; note(nextIs(1) + " loses its always-seen bonus."); }
         else if (k === 2) { st.mods[after].closed = "the storm"; note(nextIs(1) + " is closed: nothing resolves there."); }
@@ -628,6 +696,7 @@ body[data-tags="off"] .tags { display: none; }
         if (m.allDouble) { if (st.doubled[i]) r.notes.push(m.allDouble + " would double it, but this exhibit is already doubled."); else { st.doubled[i] = true; if (r.icons.length) { add(...r.icons); r.notes.push(m.allDouble + ": everything here doubled."); } else r.notes.push(m.allDouble + ": nothing here to double."); } r.tags.push("Weather"); }
       }
     }
+    if (st.pendingNotes) { r.notes.push(...st.pendingNotes); st.pendingNotes = null; }
     st.earned[i] = r.icons;
     st.lines.push(r);
     st.prog++;
@@ -684,30 +753,48 @@ body[data-tags="off"] .tags { display: none; }
 
   function whatIf(dealRow, acts, st) {
     const steps = Array(6).fill("step");
-    if (st.swaps > 0) {
-      const alt = autoWild(replay(dealRow, acts.filter(a => a === "step")));
-      return "Without your swap: " + tallyText(alt.tally) + " → " + alt.career + (alt.total === st.total ? " (the same number of reactions as your day)" : alt.total > st.total ? " (" + (alt.total - st.total) + " more reactions than your day)" : " (" + (st.total - alt.total) + " fewer reactions than your day)") + ".";
+    if (st.swaps > 0 || st.peeks > 0) {
+      const alt = autoWild(replay(dealRow, acts.filter(a => a === "step"), st.mode));
+      return "Without your " + (st.swaps ? "swap" : "peek") + ": " + tallyText(alt.tally) + " → " + alt.career + (alt.total === st.total ? " (the same number of reactions as your day)" : alt.total > st.total ? " (" + (alt.total - st.total) + " more reactions than your day)" : " (" + (st.total - alt.total) + " fewer reactions than your day)") + ".";
     }
     let best = null;
     for (let t = 0; t < 6; t++) for (let a = t; a < 6; a++) for (let b = a + 1; b < 6; b++) {
-      const r = replay(dealRow, [...steps.slice(0, t), { t: "swap", a, b }, ...steps.slice(t)]);
+      const r = replay(dealRow, [...steps.slice(0, t), { t: "swap", a, b }, ...steps.slice(t)], "open");
       if (r.swaps !== 1) continue;
       const w = autoWild(r);
       if (!best || w.total > best.total) best = { total: w.total, career: w.career, tally: w.tally, t, a, b };
     }
     if (!best || best.total <= st.total) return "No single swap would have earned more reactions than leaving the day alone.";
-    return "Best single swap: " + nameAt(dealRow, best.a) + " with " + nameAt(dealRow, best.b) + (best.t ? " after slot " + best.t : " before the day starts") + " → " + tallyText(best.tally) + " → " + best.career + " (" + (best.total - st.total) + " more reactions than your day).";
+    return "Best single swap, with every card known: " + nameAt(dealRow, best.a) + " with " + nameAt(dealRow, best.b) + (best.t ? " after slot " + best.t : " before the day starts") + " → " + tallyText(best.tally) + " → " + best.career + " (" + (best.total - st.total) + " more reactions than your day).";
   }
 
   // ---------- My actions ----------
   function sendState() { send({ t: "state", actions }); }
-  function act(a) { actions.push(a); swapMode = false; pick = null; sendState(); render(); }
-  $("nextBtn").addEventListener("click", () => { if (day) act("step"); });
-  $("allBtn").addEventListener("click", () => { if (day) { const st = replay(day.row, actions); for (let i = st.prog; i < 6; i++) actions.push("step"); swapMode = false; pick = null; sendState(); render(); } });
+  function act(a) { actions.push(a); swapMode = false; peekMode = false; pick = null; sendState(); render(); }
+  // Step together: when both players are at the same slot, the next slot resolves only once both have pressed.
+  function togetherActive(st) {
+    if (!together || !connected || !theirActions) return false;
+    const ts = replay(day.row, theirActions, day.mode);
+    return !ts.done && ts.prog === st.prog;
+  }
+  function checkReady() {
+    if (!day) return;
+    const st = replay(day.row, actions, day.mode);
+    if (togetherActive(st) && myReadyAt === st.prog && theirReadyAt === st.prog) { myReadyAt = theirReadyAt = null; act("step"); }
+  }
+  $("nextBtn").addEventListener("click", () => {
+    if (!day) return;
+    const st = replay(day.row, actions, day.mode);
+    if (togetherActive(st)) { if (myReadyAt === st.prog) return; myReadyAt = st.prog; send({ t: "ready", n: st.prog }); render(); checkReady(); }
+    else act("step");
+  });
+  $("peekBtn").addEventListener("click", () => { peekMode = !peekMode; swapMode = false; pick = null; render(); });
+  $("allBtn").addEventListener("click", () => { if (day) { const st = replay(day.row, actions, day.mode); for (let i = st.prog; i < 6; i++) actions.push("step"); swapMode = false; pick = null; sendState(); render(); } });
   $("resetBtn").addEventListener("click", () => { if (day) { actions = []; swapMode = false; pick = null; sendState(); render(); } });
-  $("swapBtn").addEventListener("click", () => { swapMode = !swapMode; pick = null; render(); });
+  $("swapBtn").addEventListener("click", () => { swapMode = !swapMode; peekMode = false; pick = null; render(); });
   function tapSlot(i, st) {
-    if (!swapMode || i < st.prog || showsBB(st.row, i)) return;
+    if (peekMode) { if (i >= st.prog && !st.up[i]) act({ t: "peek", i }); return; }
+    if (!swapMode || i < st.prog || visibleBB(st, i)) return;
     if (pick === null) { pick = i; render(); return; }
     if (pick === i) { pick = null; render(); return; }
     act({ t: "swap", a: pick, b: i });
@@ -722,11 +809,12 @@ body[data-tags="off"] .tags { display: none; }
     return { line: p.animal + ": +" + p.bonus.join("") + " " + when + ".", sub: "Always seen · " + p.kind };
   }
 
-  function cardEl(card, slotIdx) {
-    const c = el("div", "cardx" + (card.kind === "weather" ? " weather" : ""));
+  function cardEl(card, slotIdx, faceDown) {
+    const c = el("div", "cardx" + (card.kind === "weather" ? " weather" : "") + (faceDown ? " down" : ""));
     const top = el("div", "ctop");
     top.append(el("div", "cname", (card.kind === "weather" ? card.emoji + " " : "") + card.name), el("div", "cid", card.id + (card.kind === "weather" ? " · weather" : "")));
     c.append(top);
+    if (faceDown) { c.append(el("div", "facedown", "Face down · card back"), el("div", "back", card.back)); return c; }
 
     const ul = el("ul", "shifts");
     card.shifts.forEach((s, k) => {
@@ -760,14 +848,16 @@ body[data-tags="off"] .tags { display: none; }
   function renderRow(container, st, mineRow, emptyText) {
     container.replaceChildren();
     container.classList.toggle("swapmode", !!(mineRow && swapMode));
+    container.classList.toggle("peekmode", !!(mineRow && peekMode));
     if (!st) { container.append(el("div", "waiting", emptyText)); return; }
     st.row.forEach((id, i) => {
       const done = i < st.prog;
-      const can = mineRow && swapMode && !done && !showsBB(st.row, i);
+      const can = mineRow && !done && (swapMode ? !visibleBB(st, i) : peekMode ? !st.up[i] : false);
       const slot = el("div", "slot" + (done ? " done" : i === st.prog ? " next" : "") + (can ? " can" : "") + (pick === i && mineRow ? " pick" : ""));
       const h = el("div", "slot-n", "Slot " + (i + 1) + " ");
       h.append(el("em", null, i < 3 ? "· morning" : "· afternoon"));
-      const c = cardEl(CARD[id], i);
+      if (!st.up[i]) h.append(el("em", "fd", mineRow ? " · face down" : " · face down for them"));
+      const c = cardEl(CARD[id], i, mineRow && !st.up[i]);
       if (done) {
         const e = el("div", "earned");
         e.append(el("b", null, "✓ "), document.createTextNode(st.earned[i].length ? "+" + st.earned[i].join("") : "nothing"));
@@ -801,7 +891,7 @@ body[data-tags="off"] .tags { display: none; }
       if (r.kind === "swap") { const line = el("div", "line swap"); line.append(el("div", null, r.text), tagsEl(r.tags)); container.append(line); return; }
       const line = el("div", "line");
       const head = el("div");
-      head.append(el("b", null, "Slot " + r.slot + " — " + r.card.name + ": "), document.createTextNode(r.shift));
+      head.append(el("b", null, "Slot " + r.slot + " — " + r.card.name + ": "), document.createTextNode((r.revealed ? "revealed: " : "") + r.shift));
       line.append(head);
       r.notes.forEach(t => line.append(el("div", "note", "· " + t)));
       line.append(tagsEl(r.tags));
@@ -831,8 +921,9 @@ body[data-tags="off"] .tags { display: none; }
     $("controls").hidden = !canChoose;
     $("zooInfo").hidden = !canChoose;
     $("setupNote").textContent = canChoose
-      ? "Both players get this same deal. Play modes take effect in the next build step; for now every card is face up."
-      : "The host chooses the zoo, season and play mode, and deals for both of you.";
+      ? "Both players get this same deal. Step together means neither of you resolves the next slot until you have both pressed Resolve."
+      : "The host chooses the zoo, season and play mode, and deals for both of you." + (together ? " Step together is on: the next slot resolves once you have both pressed Resolve." : "");
+    $("togetherChk").checked = together;
 
     const t = $("today");
     t.replaceChildren();
@@ -842,26 +933,34 @@ body[data-tags="off"] .tags { display: none; }
       t.append(el("b", null, z.name + " · " + w.emoji + " " + day.season + (day.seasonDrawn ? " (drawn)" : "") + " · " + MODE[day.mode].name));
       const outNames = day.out.map(id => CARD[id].kind === "weather" ? "the weather (a clear day)" : CARD[id].name);
       t.append(el("span", "absent", day.out.length ? "Absent today: " + outNames.join(", ") + "." : "Every card was dealt."));
-      t.append(el("span", "absent", MODE[day.mode].note));
+      t.append(el("span", "absent", MODE[day.mode].note + (together ? " Step together." : "")));
     }
 
-    const st = day ? replay(day.row, actions) : null;
+    const st = day ? replay(day.row, actions, day.mode) : null;
     renderRow($("myRow"), st, true, role === "guest" ? "Waiting for the host to deal the day." : "Choose a zoo, season and play mode above, then shuffle and deal.");
     $("myBar").hidden = $("myLog").hidden = $("tokenBar").hidden = !st;
     $("wildBar").hidden = !(st && st.wildLeft);
     if (st) {
-      $("nextBtn").disabled = st.done; $("nextBtn").textContent = st.done ? "Day's end" : "Resolve slot " + (st.prog + 1);
-      $("allBtn").disabled = st.done; $("resetBtn").disabled = actions.length === 0;
+      const tog = togetherActive(st), waiting = tog && myReadyAt === st.prog;
+      $("nextBtn").disabled = st.done || waiting;
+      $("nextBtn").textContent = st.done ? "Day's end" : waiting ? "Waiting for the other player…" : (tog ? "Ready for slot " : "Resolve slot ") + (st.prog + 1);
+      $("allBtn").disabled = st.done || tog; $("resetBtn").disabled = actions.length === 0;
       const canSwap = !st.done && st.unspent > 0 && !st.locked;
-      $("swapBtn").disabled = !canSwap; $("swapBtn").textContent = swapMode ? "Cancel swap" : "Spend Parent token";
+      $("swapBtn").disabled = !canSwap; $("swapBtn").textContent = swapMode ? "Cancel swap" : "Spend Parent token" + (day.mode === "peek" ? " to swap" : "");
       $("swapBtn").classList.toggle("primary", swapMode);
+      $("peekBtn").hidden = day.mode !== "peek";
+      $("peekBtn").disabled = !canSwap || !st.up.some((u, i) => !u && i >= st.prog);
+      $("peekBtn").textContent = peekMode ? "Cancel peek" : "Peek with Parent token";
+      $("peekBtn").classList.toggle("primary", peekMode);
       let tk = "Parent token" + (st.tokens > 1 ? "s: " + st.tokens : ": ") + (st.tokens > 1 ? " total, " : "") + (st.unspent > 0 ? st.unspent + " unspent" : "none left");
       if (st.spent) tk += " · " + st.spent + " spent";
       if (st.lost) tk += " · " + st.lost + " lost to the rain";
       if (st.locked) tk += " · locked by Sunscreen Stop";
       $("tokenText").textContent = tk;
-      $("swapHint").textContent = swapMode ? (pick === null ? "Tap the first card to swap (unresolved, not showing a black border)." : "Now tap the card to swap it with.")
-        : canSwap ? "Spend it to swap two unresolved cards, including the weather. An unused token becomes a wild icon at day's end." : "";
+      $("swapHint").textContent = swapMode ? (pick === null ? "Tap the first card to swap (unresolved, not showing a visible black border; a face-down card is a gamble)." : "Now tap the card to swap it with.")
+        : peekMode ? "Tap a face-down card to turn it face up for the rest of the day."
+        : tog && theirReadyAt === st.prog && !waiting ? "The other player is ready for slot " + (st.prog + 1) + "."
+        : canSwap ? "Spend it to swap two unresolved cards, including the weather" + (day.mode === "peek" ? ", or to peek at one face-down card" : "") + ". An unused token becomes a wild icon at day's end." : "";
       renderTally($("myTally"), $("myCareer"), st);
       renderLog($("myLog"), st, "Your day", day.row, actions);
       if (st.wildLeft) {
@@ -875,7 +974,7 @@ body[data-tags="off"] .tags { display: none; }
     if (!code) theirEmpty = "No other player yet. Host or join a game to watch their day here.";
     else if (!connected) theirEmpty = "Waiting for the other player to join with code " + code + "…";
     else theirEmpty = "Waiting for the day to be dealt.";
-    const ts = connected && day && theirActions ? replay(day.row, theirActions) : null;
+    const ts = connected && day && theirActions ? replay(day.row, theirActions, day.mode) : null;
     renderRow($("theirRow"), ts, false, theirEmpty);
     $("theirBar").hidden = $("theirLog").hidden = !ts;
     if (ts) { renderTally($("theirTally"), $("theirCareer"), ts); renderLog($("theirLog"), ts, "Other player's day", day.row, theirActions); }
@@ -886,21 +985,28 @@ body[data-tags="off"] .tags { display: none; }
   function receive(m) {
     if (!m || typeof m !== "object") return;
     if (m.t === "day" && role === "guest" && validDay(m.day)) {
-      day = m.day; actions = []; swapMode = false; pick = null; theirActions = [];
+      day = m.day; actions = []; swapMode = false; peekMode = false; pick = null; theirActions = []; myReadyAt = theirReadyAt = null;
+      together = m.together === true;
       sendState();
     } else if (m.t === "state" && validActions(m.actions)) {
       theirActions = m.actions.slice();
+      render(); checkReady(); return;
+    } else if (m.t === "together" && role === "guest") {
+      together = m.on === true; myReadyAt = theirReadyAt = null;
+    } else if (m.t === "ready" && slotOk(m.n)) {
+      theirReadyAt = m.n; render(); checkReady(); return;
     } else return;
     render();
   }
   function onOpen() {
     connected = true;
     setStatus("on", "Connected to the other player");
-    if (role === "host" && day) send({ t: "day", day });
+    if (role === "host" && day) send({ t: "day", day, together });
+    else if (role === "host") send({ t: "together", on: together });
     sendState();
     render();
   }
-  function onClose() { connected = false; theirActions = null; setStatus("wait", "The other player left"); render(); }
+  function onClose() { connected = false; theirActions = null; myReadyAt = theirReadyAt = null; setStatus("wait", "The other player left"); render(); }
 
   // ---------- Connection: PeerJS ----------
   function loadPeerJS() {
@@ -949,7 +1055,7 @@ body[data-tags="off"] .tags { display: none; }
     $("lobbyHelp").textContent = asRole === "host"
       ? "Send this code to the other player. You choose the zoo, season and play mode, and the deal goes to both of you."
       : "You're in. The host chooses the zoo, season and play mode; you'll both get the same deal.";
-    if (asRole === "guest") { day = null; actions = []; swapMode = false; pick = null; }
+    if (asRole === "guest") { day = null; actions = []; swapMode = false; peekMode = false; pick = null; together = false; }
     render();
   }
 
@@ -982,7 +1088,7 @@ body[data-tags="off"] .tags { display: none; }
 
   $("leaveBtn").addEventListener("click", () => {
     try { transport && transport.leave(); } catch {}
-    transport = null; code = null; theirActions = null; connected = false; role = null;
+    transport = null; code = null; theirActions = null; connected = false; role = null; myReadyAt = theirReadyAt = null;
     $("hostGroup").hidden = false; $("joinGroup").hidden = false; $("codeGroup").hidden = true;
     $("hostBtn").disabled = false; $("joinBtn").disabled = false;
     $("lobbyHelp").textContent = "Host a game to get a code, then send the code to the other player. They type it here and you're connected. Each of you plays your own zoo day; you can watch each other's.";
